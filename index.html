@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ClassTrack — Attendance System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== LOADING SCREEN ===== -->
+<div id="loadingScreen">
+  <div class="loader-logo-wrap">
+    <img id="loaderLogoImg" src="" alt="Logo" style="display:none;width:200px;height:200px;object-fit:contain;border-radius:12px;">
+    <div id="loaderLogoDefault" class="loader-logo-default">✦</div>
+    <div class="loader-app-name">AttendEase</div>
+    <div class="loader-dots">
+      <span></span><span></span><span></span>
+    </div>
+  </div>
+</div>
+
+<!-- ===== LOGIN SCREEN ===== -->
+<div id="loginScreen" class="hidden">
+  <!-- BG: user can replace this image via CSS var or upload -->
+  <div class="login-bg"></div>
+  <div class="login-overlay"></div>
+  <div class="login-panel">
+    <div class="login-logo-row">
+      <div class="login-logo-icon" id="loginLogoIcon">
+        <img id="loginLogoImg" src="" alt="" style="display:none;width:44px;height:44px;object-fit:contain;border-radius:8px;">
+        <span id="loginLogoDefault">✦</span>
+      </div>
+      <div>
+        <div class="login-brand">AttendEase</div>
+        <div class="login-tagline">Attendance Management System</div>
+      </div>
+    </div>
+    <h2 class="login-title">Welcome back</h2>
+    <p class="login-sub">Sign in to your account to continue</p>
+    <div class="login-form">
+      <div class="login-field">
+        <label>Username or Email</label>
+        <input type="text" id="loginUsername" placeholder="admin@school.edu" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <label>Password</label>
+        <div class="login-pw-wrap">
+          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+          <button class="login-pw-toggle" id="loginPwToggle" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="login-options">
+        <label class="login-remember">
+          <input type="checkbox" id="loginRemember"> Remember me
+        </label>
+        <a href="#" class="login-forgot">Forgot password?</a>
+      </div>
+      <button class="login-btn" id="loginBtn">Sign In</button>
+      <div class="login-error hidden" id="loginError">Incorrect username or password.</div>
+    </div>
+    <div class="login-footer-text">
+      Default credentials: <code>admin</code> / <code>admin123</code>
+    </div>
+  </div>
+</div>
+
+<div class="app-shell" id="appShell" style="display:none">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="#" class="logo" id="logoLink" title="Go to Dashboard">
+        <span class="logo-icon" id="logoIconWrap">
+          <img id="logoImg" src="icon" alt="Logo" style="display:none;width:28px;height:28px;object-fit:contain;border-radius:4px;">
+          <span id="logoDefault">✦</span>
+        </span>
+        <span class="logo-text">AttendEase</span>
+      </a>
+      <div style="display:flex;align-items:center;gap:6px">
+        <label class="logo-upload-btn" title="Change logo" for="logoUpload">🖼</label>
+        <input type="file" id="logoUpload" accept="image/*" style="display:none">
+        <button class="sidebar-close" id="sidebarClose">✕</button>
+      </div>
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="nav-item active" data-page="dashboard">
+        <span class="nav-icon">⊟</span> Dashboard
+      </a>
+      <a href="#" class="nav-item" data-page="take-attendance">
+        <span class="nav-icon">✓</span> Take Attendance
+      </a>
+      <a href="#" class="nav-item" data-page="students">
+        <span class="nav-icon">◉</span> Students
+      </a>
+      <a href="#" class="nav-item" data-page="reports">
+        <span class="nav-icon">◈</span> Reports
+      </a>
+      <a href="#" class="nav-item" data-page="qr-checkin">
+        <span class="nav-icon">▣</span> QR Check-in
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="class-selector">
+        <label>Active Class</label>
+        <select id="globalClassSelect">
+          <option value="all">All Classes</option>
+        </select>
+      </div>
+      <button class="logout-btn" id="logoutBtn">⎋ Sign Out</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <div class="main-content">
+    <!-- Topbar -->
+    <header class="topbar">
+      <button class="menu-btn" id="menuBtn">☰</button>
+      <div class="topbar-title" id="pageTitle">Dashboard</div>
+      <div class="topbar-right">
+        <span class="today-badge" id="todayDate"></span>
+      </div>
+    </header>
+
+    <!-- Pages -->
+    <main class="page-area">
+
+      <!-- DASHBOARD PAGE -->
+      <section class="page active" id="page-dashboard">
+        <div class="page-header">
+          <h1>Overview</h1>
+          <p class="subtitle">Today's snapshot across all classes</p>
+        </div>
+        <div class="stats-grid" id="dashboardStats"></div>
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header">
+              <h2>Today's Attendance</h2>
+              <button class="btn-secondary small" onclick="navigateTo('take-attendance')">Mark Attendance</button>
+            </div>
+            <div id="todayList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2>Attendance Trend</h2>
+            </div>
+            <canvas id="trendChart" height="200"></canvas>
+          </div>
+        </div>
+        <div class="card" style="margin-top:1rem">
+          <div class="card-header">
+            <h2>At-Risk Students</h2>
+            <span class="tag tag-warn">Below 75% attendance</span>
+          </div>
+          <div id="atRiskList"></div>
+        </div>
+      </section>
+
+      <!-- TAKE ATTENDANCE PAGE -->
+      <section class="page" id="page-take-attendance">
+        <div class="page-header">
+          <h1>Take Attendance</h1>
+        </div>
+        <div class="attendance-controls">
+          <div class="control-group">
+            <label>Class</label>
+            <select id="attendanceClassSelect"></select>
+          </div>
+          <div class="control-group">
+            <label>Date</label>
+            <input type="date" id="attendanceDate">
+          </div>
+          <div class="control-group">
+            <label>Subject (optional)</label>
+            <input type="text" id="attendanceSubject" placeholder="e.g. Math, Science">
+          </div>
+          <button class="btn-primary" id="loadAttendanceBtn">Load Students</button>
+        </div>
+
+        <div id="attendanceSheet" class="hidden">
+          <div class="attendance-toolbar">
+            <div class="mark-all-btns">
+              <button class="btn-small btn-present" onclick="markAll('present')">✓ All Present</button>
+              <button class="btn-small btn-absent" onclick="markAll('absent')">✗ All Absent</button>
+            </div>
+            <div class="attendance-summary-live">
+              <span class="live-stat" id="livePresentCount">Present: 0</span>
+              <span class="live-stat" id="liveAbsentCount">Absent: 0</span>
+              <span class="live-stat" id="liveLateCount">Late: 0</span>
+            </div>
+          </div>
+          <div class="student-roster" id="studentRoster"></div>
+          <div class="save-bar">
+            <button class="btn-primary large" id="saveAttendanceBtn">Save Attendance</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- STUDENTS PAGE -->
+      <section class="page" id="page-students">
+        <div class="page-header">
+          <h1>Students</h1>
+          <button class="btn-primary" id="addStudentBtn">+ Add Student</button>
+        </div>
+
+        <!-- Modal backdrop -->
+        <div class="modal-backdrop hidden" id="studentModalBackdrop">
+          <div class="modal" id="studentModal">
+            <div class="modal-header">
+              <h2 id="modalTitle">Add Student</h2>
+              <button class="modal-close" id="modalCloseBtn">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>Full Name *</label>
+                <input type="text" id="studentName" placeholder="Juan dela Cruz">
+              </div>
+              <div class="form-group">
+                <label>Student ID *</label>
+                <input type="text" id="studentId" placeholder="2024-0001">
+              </div>
+              <div class="form-group">
+                <label>Class *</label>
+                <input type="text" id="studentClass" placeholder="e.g. Grade 10-Rizal" autocomplete="off">
+                <div id="classAutocomplete" class="autocomplete-list hidden"></div>
+              </div>
+              <div class="form-group">
+                <label>Email (optional)</label>
+                <input type="email" id="studentEmail" placeholder="student@school.edu">
+              </div>
+              <div class="form-group">
+                <label>Phone (optional)</label>
+                <input type="text" id="studentPhone" placeholder="+63 9XX XXX XXXX">
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-secondary" id="cancelStudentBtn">Cancel</button>
+              <button class="btn-primary" id="saveStudentBtn">Save Student</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class modal -->
+        <div class="modal-backdrop hidden" id="classModalBackdrop">
+          <div class="modal small-modal">
+            <div class="modal-header">
+              <h2>Manage Classes</h2>
+              <button class="modal-close" id="classModalClose">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>New Class Name</label>
+                <div class="input-row">
+                  <input type="text" id="newClassName" placeholder="e.g. Grade 10 - Rizal">
+                  <button class="btn-primary" id="addClassBtn">Add</button>
+                </div>
+              </div>
+              <div id="classList"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="students-toolbar">
+          <input type="text" id="studentSearch" placeholder="Search students...">
+          <select id="filterClass">
+            <option value="all">All Classes</option>
+          </select>
+          <button class="btn-secondary" id="manageClassesBtn">Manage Classes</button>
+          <button class="btn-secondary" id="exportStudentsBtn">Export CSV</button>
+        </div>
+        <div class="table-wrapper">
+          <table class="data-table" id="studentsTable">
+            <thead>
+              <tr>
+                <th>Student ID</th>
+                <th>Name</th>
+                <th>Class</th>
+                <th>Email</th>
+                <th>Attendance %</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="studentsTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- REPORTS PAGE -->
+      <section class="page" id="page-reports">
+        <div class="page-header">
+          <h1>Reports</h1>
+        </div>
+        <div class="reports-filters">
+          <div class="control-group">
+            <label>Class</label>
+            <select id="reportClass"></select>
+          </div>
+          <div class="control-group">
+            <label>From</label>
+            <input type="date" id="reportFrom">
+          </div>
+          <div class="control-group">
+            <label>To</label>
+            <input type="date" id="reportTo">
+          </div>
+          <button class="btn-primary" id="generateReportBtn">Generate Report</button>
+          <button class="btn-secondary" id="exportReportBtn">Export CSV</button>
+        </div>
+
+        <div id="reportContent"></div>
+      </section>
+
+      <!-- QR CHECK-IN PAGE -->
+      <section class="page" id="page-qr-checkin">
+        <div class="page-header">
+          <h1>QR Check-in</h1>
+          <p class="subtitle">Generate a QR code for students to self-check in</p>
+        </div>
+        <div class="qr-layout">
+          <div class="card qr-setup">
+            <div class="card-header"><h2>Setup QR Session</h2></div>
+            <div class="form-group">
+              <label>Class</label>
+              <select id="qrClass"></select>
+            </div>
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="qrDate">
+            </div>
+            <div class="form-group">
+              <label>Subject</label>
+              <input type="text" id="qrSubject" placeholder="Optional subject">
+            </div>
+            <div class="form-group">
+              <label>Session expires in</label>
+              <select id="qrExpiry">
+                <option value="5">5 minutes</option>
+                <option value="10" selected>10 minutes</option>
+                <option value="30">30 minutes</option>
+                <option value="60">1 hour</option>
+              </select>
+            </div>
+            <button class="btn-primary" id="generateQrBtn">Generate QR Code</button>
+          </div>
+          <div class="card qr-display">
+            <div class="card-header"><h2>QR Code</h2></div>
+            <div id="qrCodeContainer">
+              <div class="qr-placeholder">
+                <span>Configure and generate to show QR code</span>
+              </div>
+            </div>
+            <div id="qrInfo" class="hidden">
+              <p id="qrSessionInfo"></p>
+              <p id="qrExpireInfo" class="muted-text"></p>
+              <div class="qr-checked-in">
+                <strong>Checked in: <span id="qrCheckedCount">0</span></strong>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- QR Self-check-in form (simulated) -->
+        <div class="card hidden" id="qrCheckInForm">
+          <div class="card-header"><h2>Student Self Check-in</h2></div>
+          <p class="muted-text">Student scans QR and enters their ID below:</p>
+          <div class="form-group" style="max-width:320px">
+            <label>Student ID</label>
+            <div class="input-row">
+              <input type="text" id="qrStudentInput" placeholder="Enter Student ID">
+              <button class="btn-primary" id="qrCheckinBtn">Check In</button>
+            </div>
+          </div>
+          <div id="qrCheckinResult"></div>
+          <div id="qrCheckedInList"></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast hidden" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

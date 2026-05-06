@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendEase — Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app-style.css">
+</head>
+<body>
+
+<script src="shared.js"></script>
+<script>buildShell('reports');</script>
+
+<!-- PAGE CONTENT -->
+<section class="page active" id="page-reports">
+  <div class="page-header">
+    <h1>Reports</h1>
+  </div>
+
+  <div class="reports-filters">
+    <div class="control-group">
+      <label>Class</label>
+      <select id="reportClass"></select>
+    </div>
+    <div class="control-group">
+      <label>From</label>
+      <input type="date" id="reportFrom">
+    </div>
+    <div class="control-group">
+      <label>To</label>
+      <input type="date" id="reportTo">
+    </div>
+    <button class="btn-primary" id="generateReportBtn">Generate Report</button>
+    <button class="btn-secondary" id="exportReportBtn">Export CSV</button>
+  </div>
+
+  <div id="reportContent"></div>
+</section>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+initShell();
+
+// Init date range
+const toDate   = new Date();
+const fromDate = new Date(); fromDate.setDate(fromDate.getDate() - 30);
+document.getElementById('reportFrom').value = fromDate.toISOString().split('T')[0];
+document.getElementById('reportTo').value   = toDate.toISOString().split('T')[0];
+
+populateClassSelects([{ id:'reportClass', includeAll:true }]);
+
+document.getElementById('generateReportBtn').addEventListener('click', generateReport);
+document.getElementById('exportReportBtn').addEventListener('click', exportReport);
+
+function generateReport() {
+  const cl   = document.getElementById('reportClass').value;
+  const from = document.getElementById('reportFrom').value;
+  const to   = document.getElementById('reportTo').value;
+  if (!from || !to) { showToast('Select a date range', 'error'); return; }
+
+  let records  = DB.records.filter(r => r.date >= from && r.date <= to);
+  let students = DB.students;
+  if (cl !== 'all') {
+    records  = records.filter(r => r.class === cl);
+    students = students.filter(s => s.class === cl);
+  }
+
+  const totalSessions = [...new Set(records.map(r => r.date + r.class))].length;
+  const totalPresent  = records.filter(r => r.status==='present').length;
+  const totalAbsent   = records.filter(r => r.status==='absent').length;
+  const totalLate     = records.filter(r => r.status==='late').length;
+  const totalRecs     = records.length;
+  const rate          = totalRecs ? Math.round((totalPresent + totalLate) / totalRecs * 100) : 0;
+
+  const studentStats = students.map(s => {
+    const recs    = records.filter(r => r.studentId === s.id);
+    const present = recs.filter(r => r.status==='present').length;
+    const absent  = recs.filter(r => r.status==='absent').length;
+    const late    = recs.filter(r => r.status==='late').length;
+    const pct     = recs.length ? Math.round((present + late) / recs.length * 100) : null;
+    return { ...s, present, absent, late, total: recs.length, pct };
+  }).sort((a,b) => (a.pct??999) - (b.pct??999));
+
+  document.getElementById('reportContent').innerHTML = `
+    <div class="report-summary">
+      <div class="stat-card"><div class="stat-label">Total Sessions</div><div class="stat-value">${totalSessions}</div></div>
+      <div class="stat-card"><div class="stat-label">Attendance Rate</div><div class="stat-value" style="color:${pctColor(rate)}">${rate}%</div></div>
+      <div class="stat-card"><div class="stat-label">Present</div><div class="stat-value green">${totalPresent}</div></div>
+      <div class="stat-card"><div class="stat-label">Absent</div><div class="stat-value red">${totalAbsent}</div></div>
+      <div class="stat-card"><div class="stat-label">Late</div><div class="stat-value amber">${totalLate}</div></div>
+    </div>
+    <div class="report-table-wrapper">
+      <div class="report-title">Per-Student Summary — ${cl==='all'?'All Classes':cl} — ${formatDate(from)} to ${formatDate(to)}</div>
+      <div class="table-wrapper" style="border-radius:0;border:none">
+        <table class="data-table">
+          <thead><tr>
+            <th>Student ID</th><th>Name</th><th>Class</th>
+            <th>Present</th><th>Absent</th><th>Late</th><th>Total</th><th>Rate</th>
+          </tr></thead>
+          <tbody>
+            ${studentStats.map(s => `
+            <tr>
+              <td><span style="font-family:var(--mono);font-size:12px">${s.id}</span></td>
+              <td>${s.name}</td>
+              <td><span class="tag tag-blue">${s.class}</span></td>
+              <td><span class="tag tag-green">${s.present}</span></td>
+              <td><span class="tag tag-red">${s.absent}</span></td>
+              <td><span class="tag tag-warn">${s.late}</span></td>
+              <td>${s.total}</td>
+              <td>
+                <div class="pct-bar-cell">
+                  <div class="pct-bar"><div class="pct-fill" style="width:${s.pct??0}%;background:${pctColor(s.pct??0)}"></div></div>
+                  <span class="pct-label" style="color:${pctColor(s.pct??0)}">${s.pct!==null?s.pct+'%':'—'}</span>
+                </div>
+              </td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function exportReport() {
+  const cl   = document.getElementById('reportClass').value;
+  const from = document.getElementById('reportFrom').value;
+  const to   = document.getElementById('reportTo').value;
+  if (!from || !to) { showToast('Generate a report first', 'error'); return; }
+
+  let records  = DB.records.filter(r => r.date >= from && r.date <= to);
+  let students = DB.students;
+  if (cl !== 'all') {
+    records  = records.filter(r => r.class === cl);
+    students = students.filter(s => s.class === cl);
+  }
+
+  const rows = [['Student ID','Name','Class','Date','Status','Subject','Remarks']];
+  records.forEach(r => {
+    const s = students.find(st => st.id === r.studentId);
+    if (!s) return;
+    rows.push([r.studentId, s.name, r.class, r.date, r.status, r.subject||'', r.remarks||'']);
+  });
+  downloadCSV(rows, `attendance-report-${from}-to-${to}.csv`);
+  showToast('Report exported');
+}
+</script>
+</body>
+</html>

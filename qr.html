@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendEase — QR Check-in</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app-style.css">
+</head>
+<body>
+
+<script src="shared.js"></script>
+<script>buildShell('qr-checkin');</script>
+
+<!-- PAGE CONTENT -->
+<section class="page active" id="page-qr-checkin">
+  <div class="page-header">
+    <div>
+      <h1>QR Check-in</h1>
+      <p class="subtitle">Generate a QR code for students to self-check in</p>
+    </div>
+  </div>
+
+  <div class="qr-layout">
+    <div class="card qr-setup">
+      <div class="card-header"><h2>Setup QR Session</h2></div>
+      <div class="form-group">
+        <label>Class</label>
+        <select id="qrClass"></select>
+      </div>
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="qrDate">
+      </div>
+      <div class="form-group">
+        <label>Subject</label>
+        <input type="text" id="qrSubject" placeholder="Optional subject">
+      </div>
+      <div class="form-group">
+        <label>Session expires in</label>
+        <select id="qrExpiry">
+          <option value="5">5 minutes</option>
+          <option value="10" selected>10 minutes</option>
+          <option value="30">30 minutes</option>
+          <option value="60">1 hour</option>
+        </select>
+      </div>
+      <button class="btn-primary" id="generateQrBtn">Generate QR Code</button>
+    </div>
+
+    <div class="card qr-display">
+      <div class="card-header"><h2>QR Code</h2></div>
+      <div id="qrCodeContainer">
+        <div class="qr-placeholder">
+          <span>Configure and generate to show QR code</span>
+        </div>
+      </div>
+      <div id="qrInfo" class="hidden">
+        <p id="qrSessionInfo"></p>
+        <p id="qrExpireInfo" class="muted-text"></p>
+        <div class="qr-checked-in" style="margin-top:10px">
+          <strong>Checked in: <span id="qrCheckedCount">0</span></strong>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Self check-in form -->
+  <div class="card hidden" id="qrCheckInForm">
+    <div class="card-header"><h2>Student Self Check-in</h2></div>
+    <p class="muted-text">Student scans QR and enters their ID below:</p>
+    <div class="form-group" style="max-width:320px;margin-top:12px">
+      <label>Student ID</label>
+      <div class="input-row">
+        <input type="text" id="qrStudentInput" placeholder="Enter Student ID">
+        <button class="btn-primary" id="qrCheckinBtn">Check In</button>
+      </div>
+    </div>
+    <div id="qrCheckinResult"></div>
+    <div id="qrCheckedInList" style="margin-top:12px"></div>
+  </div>
+</section>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script>
+initShell();
+
+populateClassSelects([{ id:'qrClass', includeAll:false }]);
+document.getElementById('qrDate').value = today();
+
+let qrSession = null;
+let qrTimer   = null;
+
+document.getElementById('generateQrBtn').addEventListener('click', generateQR);
+document.getElementById('qrCheckinBtn').addEventListener('click', qrCheckIn);
+document.getElementById('qrStudentInput').addEventListener('keypress', e => { if(e.key==='Enter') qrCheckIn(); });
+
+function generateQR() {
+  const cl      = document.getElementById('qrClass').value;
+  const date    = document.getElementById('qrDate').value;
+  const subject = document.getElementById('qrSubject').value;
+  const expiry  = parseInt(document.getElementById('qrExpiry').value);
+  if (!cl || !date) { showToast('Select class and date', 'error'); return; }
+
+  const sessionId = Math.random().toString(36).substr(2,9).toUpperCase();
+  const expiresAt = Date.now() + expiry * 60000;
+  qrSession = { cl, date, subject, sessionId, expiresAt, checkedIn: [] };
+
+  if (qrTimer) clearInterval(qrTimer);
+
+  const container = document.getElementById('qrCodeContainer');
+  container.innerHTML = '<canvas id="qrCanvas"></canvas>';
+
+  const qrData = JSON.stringify({ session: sessionId, class: cl, date, subject });
+  QRCode.toCanvas(document.getElementById('qrCanvas'), qrData, { width:200, margin:2 }, err => {
+    if (err) { showToast('QR generation failed', 'error'); }
+  });
+
+  document.getElementById('qrInfo').classList.remove('hidden');
+  document.getElementById('qrSessionInfo').textContent = `Class: ${cl} | ${formatDate(date)}${subject?' | '+subject:''}`;
+  document.getElementById('qrCheckInForm').classList.remove('hidden');
+  document.getElementById('qrCheckedCount').textContent = '0';
+
+  function tick() {
+    const rem = Math.max(0, Math.round((qrSession.expiresAt - Date.now()) / 1000));
+    const min = Math.floor(rem / 60);
+    const sec = String(rem % 60).padStart(2, '0');
+    document.getElementById('qrExpireInfo').textContent = rem > 0
+      ? `Expires in ${min}:${sec}`
+      : 'Session expired';
+    if (rem === 0) {
+      clearInterval(qrTimer);
+      container.innerHTML = '<div class="qr-placeholder"><span>Session expired. Generate a new QR code.</span></div>';
+    }
+  }
+  tick();
+  qrTimer = setInterval(tick, 1000);
+  showToast('QR code generated');
+}
+
+function qrCheckIn() {
+  if (!qrSession) { showToast('No active session', 'error'); return; }
+  if (Date.now() > qrSession.expiresAt) { showToast('Session expired', 'error'); return; }
+
+  const sid = document.getElementById('qrStudentInput').value.trim();
+  if (!sid) return;
+
+  const student = DB.students.find(s => s.id === sid && s.class === qrSession.cl);
+  if (!student) {
+    document.getElementById('qrCheckinResult').innerHTML = `<div class="tag tag-red" style="margin-top:8px">Student ID not found in this class.</div>`;
+    return;
+  }
+  if (qrSession.checkedIn.includes(sid)) {
+    document.getElementById('qrCheckinResult').innerHTML = `<div class="tag tag-warn" style="margin-top:8px">Already checked in.</div>`;
+    return;
+  }
+
+  qrSession.checkedIn.push(sid);
+
+  const records = DB.records.filter(r => !(r.studentId===sid && r.date===qrSession.date && r.class===qrSession.cl));
+  records.push({ studentId:sid, date:qrSession.date, class:qrSession.cl, status:'present', subject:qrSession.subject, remarks:'QR check-in' });
+  DB.records = records;
+
+  document.getElementById('qrCheckedCount').textContent = qrSession.checkedIn.length;
+  document.getElementById('qrCheckinResult').innerHTML  = `<div class="tag tag-green" style="margin-top:8px">✓ ${student.name} checked in!</div>`;
+  document.getElementById('qrStudentInput').value = '';
+
+  const listEl = document.getElementById('qrCheckedInList');
+  listEl.innerHTML += `
+    <div class="today-item">
+      <div class="student-avatar" style="width:26px;height:26px;font-size:10px">${initials(student.name)}</div>
+      <span>${student.name}</span>
+      <span class="tag tag-green" style="font-size:11px">✓ present</span>
+    </div>`;
+}
+</script>
+</body>
+</html>

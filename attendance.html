@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendEase — Take Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app-style.css">
+</head>
+<body>
+
+<script src="shared.js"></script>
+<script>buildShell('take-attendance');</script>
+
+<!-- PAGE CONTENT -->
+<section class="page active" id="page-take-attendance">
+  <div class="page-header">
+    <h1>Take Attendance</h1>
+  </div>
+
+  <div class="attendance-controls">
+    <div class="control-group">
+      <label>Class</label>
+      <select id="attendanceClassSelect"></select>
+    </div>
+    <div class="control-group">
+      <label>Date</label>
+      <input type="date" id="attendanceDate">
+    </div>
+    <div class="control-group">
+      <label>Subject (optional)</label>
+      <input type="text" id="attendanceSubject" placeholder="e.g. Math, Science">
+    </div>
+    <button class="btn-primary" id="loadAttendanceBtn">Load Students</button>
+  </div>
+
+  <div id="attendanceSheet" class="hidden">
+    <div class="attendance-toolbar">
+      <div class="mark-all-btns">
+        <button class="btn-small btn-present" id="markAllPresent">✓ All Present</button>
+        <button class="btn-small btn-absent" id="markAllAbsent">✗ All Absent</button>
+      </div>
+      <div class="attendance-summary-live">
+        <span class="live-stat" id="livePresentCount">Present: 0</span>
+        <span class="live-stat" id="liveAbsentCount">Absent: 0</span>
+        <span class="live-stat" id="liveLateCount">Late: 0</span>
+      </div>
+    </div>
+    <div class="student-roster" id="studentRoster"></div>
+    <div class="save-bar">
+      <button class="btn-primary large" id="saveAttendanceBtn">Save Attendance</button>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+initShell();
+
+let currentRosterStudents = [];
+
+// Init
+populateClassSelects([{ id:'attendanceClassSelect', includeAll:false }]);
+document.getElementById('attendanceDate').value = today();
+
+document.getElementById('loadAttendanceBtn').addEventListener('click', loadAttendanceSheet);
+document.getElementById('saveAttendanceBtn').addEventListener('click', saveAttendance);
+document.getElementById('markAllPresent').addEventListener('click', () => markAll('present'));
+document.getElementById('markAllAbsent').addEventListener('click', () => markAll('absent'));
+
+function loadAttendanceSheet() {
+  const cl   = document.getElementById('attendanceClassSelect').value;
+  const date = document.getElementById('attendanceDate').value;
+  if (!cl || !date) { showToast('Please select a class and date', 'error'); return; }
+
+  const classStudents = DB.students.filter(s => s.class === cl);
+  if (!classStudents.length) { showToast('No students in this class', 'error'); return; }
+  currentRosterStudents = classStudents;
+
+  const existing = DB.records.filter(r => r.date === date && r.class === cl);
+  document.getElementById('attendanceSheet').classList.remove('hidden');
+
+  const roster = document.getElementById('studentRoster');
+  roster.innerHTML = classStudents.map(s => {
+    const rec = existing.find(r => r.studentId === s.id);
+    const status  = rec ? rec.status : '';
+    const remarks = rec ? rec.remarks : '';
+    return `
+    <div class="student-row status-${status}" id="row-${s.id}" data-id="${s.id}">
+      <div class="student-avatar">${initials(s.name)}</div>
+      <div class="student-info">
+        <div class="student-name">${s.name}</div>
+        <div class="student-id">${s.id}</div>
+      </div>
+      <div class="status-btns">
+        <button class="status-btn ${status==='present'?'active-present':''}" onclick="setStatus('${s.id}','present')">Present</button>
+        <button class="status-btn ${status==='absent'?'active-absent':''}"  onclick="setStatus('${s.id}','absent')">Absent</button>
+        <button class="status-btn ${status==='late'?'active-late':''}"    onclick="setStatus('${s.id}','late')">Late</button>
+      </div>
+      <input type="text" class="remarks-input" id="remarks-${s.id}" placeholder="Remarks..." value="${remarks}">
+    </div>`;
+  }).join('');
+
+  updateLiveCounts();
+}
+
+function setStatus(studentId, status) {
+  const row = document.getElementById('row-' + studentId);
+  row.className = `student-row status-${status}`;
+  row.querySelectorAll('.status-btn').forEach(b => {
+    b.className = 'status-btn';
+    if (b.textContent.toLowerCase() === status) b.classList.add(`active-${status}`);
+  });
+  updateLiveCounts();
+}
+
+function markAll(status) {
+  currentRosterStudents.forEach(s => setStatus(s.id, status));
+}
+
+function updateLiveCounts() {
+  let p=0, a=0, l=0;
+  currentRosterStudents.forEach(s => {
+    const row = document.getElementById('row-' + s.id);
+    if (!row) return;
+    if (row.classList.contains('status-present')) p++;
+    else if (row.classList.contains('status-absent')) a++;
+    else if (row.classList.contains('status-late')) l++;
+  });
+  document.getElementById('livePresentCount').textContent = `Present: ${p}`;
+  document.getElementById('liveAbsentCount').textContent  = `Absent: ${a}`;
+  document.getElementById('liveLateCount').textContent    = `Late: ${l}`;
+}
+
+function saveAttendance() {
+  const cl      = document.getElementById('attendanceClassSelect').value;
+  const date    = document.getElementById('attendanceDate').value;
+  const subject = document.getElementById('attendanceSubject').value;
+
+  const newRecords = DB.records.filter(r => !(r.date === date && r.class === cl));
+  currentRosterStudents.forEach(s => {
+    const row = document.getElementById('row-' + s.id);
+    let status = 'absent';
+    if (row.classList.contains('status-present')) status = 'present';
+    else if (row.classList.contains('status-late')) status = 'late';
+    const remarks = document.getElementById('remarks-' + s.id).value;
+    newRecords.push({ studentId: s.id, date, class: cl, status, subject, remarks });
+  });
+  DB.records = newRecords;
+  showToast(`Attendance saved for ${formatDate(date)} — ${cl}`);
+}
+</script>
+</body>
+</html>

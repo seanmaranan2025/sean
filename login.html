@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendEase — Sign In</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #f5f4f0;
+    --surface: #ffffff;
+    --surface2: #f0efe9;
+    --border: #e0ddd5;
+    --border-strong: #c8c5bb;
+    --text: #1a1916;
+    --text2: #5a5851;
+    --text3: #8f8c83;
+    --accent: #2d5be3;
+    --accent-light: #e8edfb;
+    --accent-hover: #1e47cc;
+    --red: #b83232;
+    --red-bg: #fbeaea;
+    --radius: 10px;
+    --radius-sm: 6px;
+    --font: 'DM Sans', sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+  html, body { height: 100%; font-family: var(--font); color: var(--text); }
+
+  /* ── Full-bleed bg ── */
+  #loginScreen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    background-image: url('bg.jpg');
+    background-size: cover;
+    background-position: center;
+    padding: 24px 16px;
+  }
+  /* dark overlay */
+  #loginScreen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(8, 16, 40, 0.55);
+    backdrop-filter: blur(2px);
+  }
+
+  /* ── Login panel ── */
+  .login-panel {
+    position: relative;
+    z-index: 1;
+    background: rgba(255, 255, 255, 0.97);
+    border-radius: 20px;
+    padding: 40px 44px 32px;
+    width: 100%;
+    max-width: 430px;
+    box-shadow: 0 32px 80px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,255,255,0.18);
+    animation: slideIn 0.45s cubic-bezier(.22,.68,0,1.2) both;
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateY(32px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .login-logo-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 30px;
+  }
+  .login-logo-icon {
+    width: 50px; height: 50px;
+    background: var(--accent);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    color: white;
+    flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(45,91,227,0.35);
+  }
+  .login-brand { font-size: 19px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+  .login-tagline { font-size: 11.5px; color: var(--text3); margin-top: 2px; }
+
+  .login-title { font-size: 23px; font-weight: 700; letter-spacing: -0.6px; margin-bottom: 4px; }
+  .login-sub { font-size: 13px; color: var(--text3); margin-bottom: 26px; }
+
+  .login-field { margin-bottom: 18px; }
+  .login-field label { display: block; font-size: 12.5px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+  .login-field input {
+    width: 100%; padding: 11px 14px;
+    border: 1.5px solid var(--border-strong);
+    border-radius: 9px;
+    font-size: 14px;
+    font-family: var(--font);
+    color: var(--text);
+    background: var(--surface);
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .login-field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+  }
+
+  .login-pw-wrap { position: relative; }
+  .login-pw-wrap input { padding-right: 46px; }
+  .login-pw-toggle {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; font-size: 16px;
+    opacity: 0.45; transition: opacity 0.15s;
+  }
+  .login-pw-toggle:hover { opacity: 1; }
+
+  .login-options {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 22px; font-size: 12.5px;
+  }
+  .login-remember {
+    display: flex; align-items: center; gap: 6px;
+    color: var(--text2); cursor: pointer; user-select: none;
+  }
+  .login-remember input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+  .login-forgot { color: var(--accent); text-decoration: none; font-size: 12.5px; }
+  .login-forgot:hover { text-decoration: underline; }
+
+  .login-btn {
+    width: 100%; padding: 13px;
+    background: var(--accent); color: white;
+    border: none; border-radius: 9px;
+    font-size: 15px; font-weight: 600;
+    font-family: var(--font); cursor: pointer;
+    transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+    letter-spacing: -0.2px;
+  }
+  .login-btn:hover { background: var(--accent-hover); box-shadow: 0 4px 20px rgba(45,91,227,0.4); }
+  .login-btn:active { transform: scale(0.98); }
+  .login-btn.loading { background: #7a96e8; pointer-events: none; }
+
+  .login-error {
+    margin-top: 14px; padding: 11px 14px;
+    background: var(--red-bg); color: var(--red);
+    border-radius: 9px; font-size: 13px;
+    text-align: center; border: 1px solid #f5c0c0;
+    display: none;
+  }
+  .login-footer-text {
+    margin-top: 22px; font-size: 11.5px; color: var(--text3); text-align: center;
+  }
+  .login-footer-text code {
+    background: var(--surface2); border-radius: 4px;
+    padding: 1px 5px; font-family: var(--mono); font-size: 11px; color: var(--text2);
+  }
+
+  @media (max-width: 480px) {
+    .login-panel { padding: 30px 22px 26px; border-radius: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loginScreen">
+  <div class="login-panel">
+
+    <div class="login-logo-row">
+      <div class="login-logo-icon" id="loginLogoIcon">
+        <img id="loginLogoImg" src="" alt="" style="display:none;width:44px;height:44px;object-fit:contain;border-radius:8px;">
+        <span id="loginLogoDefault">✦</span>
+      </div>
+      <div>
+        <div class="login-brand">AttendEase</div>
+        <div class="login-tagline">Attendance Management System</div>
+      </div>
+    </div>
+
+    <h2 class="login-title">Welcome back</h2>
+    <p class="login-sub">Sign in to your account to continue</p>
+
+    <div class="login-field">
+      <label>Username or Email</label>
+      <input type="text" id="loginUsername" placeholder="admin@school.edu" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Password</label>
+      <div class="login-pw-wrap">
+        <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
+        <button class="login-pw-toggle" id="loginPwToggle" tabindex="-1">👁</button>
+      </div>
+    </div>
+
+    <div class="login-options">
+      <label class="login-remember">
+        <input type="checkbox" id="loginRemember"> Remember me
+      </label>
+      <a href="#" class="login-forgot">Forgot password?</a>
+    </div>
+
+    <button class="login-btn" id="loginBtn">Sign In</button>
+    <div class="login-error" id="loginError">Incorrect username or password.</div>
+
+    <div class="login-footer-text">
+      Default credentials: <code>admin</code> / <code>admin123</code>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Apply saved logo
+  (function() {
+    const saved = localStorage.getItem('ct_logo');
+    if (!saved) return;
+    const img = document.getElementById('loginLogoImg');
+    const def = document.getElementById('loginLogoDefault');
+    img.src = saved;
+    img.style.display = 'block';
+    def.style.display = 'none';
+  })();
+
+  function getCredentials() {
+    return {
+      username: localStorage.getItem('ct_username') || 'admin',
+      password: localStorage.getItem('ct_password') || 'admin123'
+    };
+  }
+
+  const loginBtn = document.getElementById('loginBtn');
+  const loginErr = document.getElementById('loginError');
+  const pwInput  = document.getElementById('loginPassword');
+  const pwToggle = document.getElementById('loginPwToggle');
+
+  pwToggle.addEventListener('click', () => {
+    const isText = pwInput.type === 'text';
+    pwInput.type = isText ? 'password' : 'text';
+    pwToggle.textContent = isText ? '👁' : '🙈';
+  });
+
+  [document.getElementById('loginUsername'), pwInput].forEach(el => {
+    el.addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
+  });
+
+  loginBtn.addEventListener('click', doLogin);
+
+  function doLogin() {
+    const username = document.getElementById('loginUsername').value.trim();
+    const password = pwInput.value;
+    const creds = getCredentials();
+
+    loginBtn.textContent = 'Signing in…';
+    loginBtn.classList.add('loading');
+    loginErr.style.display = 'none';
+
+    setTimeout(() => {
+      if (username === creds.username && password === creds.password) {
+        sessionStorage.setItem('ct_loggedin', '1');
+        window.location.href = 'dashboard.html';
+      } else {
+        loginBtn.textContent = 'Sign In';
+        loginBtn.classList.remove('loading');
+        loginErr.style.display = 'block';
+        pwInput.value = '';
+        pwInput.focus();
+      }
+    }, 700);
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AttendEase — Students</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app-style.css">
+</head>
+<body>
+
+<script src="shared.js"></script>
+<script>buildShell('students');</script>
+
+<!-- PAGE CONTENT -->
+<section class="page active" id="page-students">
+  <div class="page-header">
+    <h1>Students</h1>
+    <button class="btn-primary" id="addStudentBtn">+ Add Student</button>
+  </div>
+
+  <!-- Student Modal -->
+  <div class="modal-backdrop hidden" id="studentModalBackdrop">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Add Student</h2>
+        <button class="modal-close" id="modalCloseBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Full Name *</label>
+          <input type="text" id="studentName" placeholder="Juan dela Cruz">
+        </div>
+        <div class="form-group">
+          <label>Student ID *</label>
+          <input type="text" id="studentId" placeholder="2024-0001">
+        </div>
+        <div class="form-group">
+          <label>Class *</label>
+          <input type="text" id="studentClass" placeholder="e.g. Grade 10-Rizal" autocomplete="off">
+          <div id="classAutocomplete" class="autocomplete-list hidden"></div>
+        </div>
+        <div class="form-group">
+          <label>Email (optional)</label>
+          <input type="email" id="studentEmail" placeholder="student@school.edu">
+        </div>
+        <div class="form-group">
+          <label>Phone (optional)</label>
+          <input type="text" id="studentPhone" placeholder="+63 9XX XXX XXXX">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-secondary" id="cancelStudentBtn">Cancel</button>
+        <button class="btn-primary" id="saveStudentBtn">Save Student</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Class Modal -->
+  <div class="modal-backdrop hidden" id="classModalBackdrop">
+    <div class="modal small-modal">
+      <div class="modal-header">
+        <h2>Manage Classes</h2>
+        <button class="modal-close" id="classModalClose">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>New Class Name</label>
+          <div class="input-row">
+            <input type="text" id="newClassName" placeholder="e.g. Grade 10 - Rizal">
+            <button class="btn-primary" id="addClassBtn">Add</button>
+          </div>
+        </div>
+        <div id="classList"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="students-toolbar">
+    <input type="text" id="studentSearch" placeholder="Search students...">
+    <select id="filterClass"></select>
+    <button class="btn-secondary" id="manageClassesBtn">Manage Classes</button>
+    <button class="btn-secondary" id="exportStudentsBtn">Export CSV</button>
+  </div>
+
+  <div class="table-wrapper">
+    <table class="data-table" id="studentsTable">
+      <thead>
+        <tr>
+          <th>Student ID</th><th>Name</th><th>Class</th><th>Email</th><th>Attendance %</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="studentsTableBody"></tbody>
+    </table>
+  </div>
+</section>
+
+<div class="toast" id="toast" style="display:none"></div>
+
+<script>
+initShell();
+
+let editingStudentId = null;
+
+populateClassSelects([
+  { id:'filterClass', includeAll:true }
+]);
+renderStudentsTable();
+initClassAutocomplete();
+
+// ── Buttons ──
+document.getElementById('addStudentBtn').addEventListener('click', openAddStudentModal);
+document.getElementById('saveStudentBtn').addEventListener('click', saveStudent);
+document.getElementById('cancelStudentBtn').addEventListener('click', closeStudentModal);
+document.getElementById('modalCloseBtn').addEventListener('click', closeStudentModal);
+document.getElementById('manageClassesBtn').addEventListener('click', openClassesModal);
+document.getElementById('classModalClose').addEventListener('click', () => document.getElementById('classModalBackdrop').classList.add('hidden'));
+document.getElementById('addClassBtn').addEventListener('click', addNewClass);
+document.getElementById('newClassName').addEventListener('keypress', e => { if (e.key==='Enter') addNewClass(); });
+document.getElementById('exportStudentsBtn').addEventListener('click', exportStudents);
+document.getElementById('studentSearch').addEventListener('input', e => renderStudentsTable(e.target.value));
+document.getElementById('filterClass').addEventListener('change', () => renderStudentsTable(document.getElementById('studentSearch').value));
+document.getElementById('studentModalBackdrop').addEventListener('click', e => { if(e.target===e.currentTarget) closeStudentModal(); });
+document.getElementById('classModalBackdrop').addEventListener('click', e => { if(e.target===e.currentTarget) e.currentTarget.classList.add('hidden'); });
+
+function closeStudentModal() { document.getElementById('studentModalBackdrop').classList.add('hidden'); }
+
+function renderStudentsTable(filter='') {
+  const students = DB.students;
+  const classFilter = document.getElementById('filterClass').value;
+  const search = filter.toLowerCase();
+  const filtered = students.filter(s =>
+    (!search || s.name.toLowerCase().includes(search) || s.id.toLowerCase().includes(search)) &&
+    (classFilter === 'all' || s.class === classFilter)
+  );
+  const tbody = document.getElementById('studentsTableBody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state"><div class="empty-icon">👥</div>No students found.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map(s => {
+    const pct = getAttendancePct(s.id);
+    const pctStr = pct===null ? '—' : pct+'%';
+    const color = pct===null ? '#8f8c83' : pctColor(pct);
+    return `
+    <tr>
+      <td><span style="font-family:var(--mono);font-size:12px">${s.id}</span></td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="student-avatar" style="width:28px;height:28px;font-size:10px">${initials(s.name)}</div>
+          ${s.name}
+        </div>
+      </td>
+      <td><span class="tag tag-blue">${s.class}</span></td>
+      <td style="color:var(--text3)">${s.email||'—'}</td>
+      <td>
+        <div class="pct-bar-cell">
+          <div class="pct-bar"><div class="pct-fill" style="width:${pct||0}%;background:${color}"></div></div>
+          <span class="pct-label" style="color:${color}">${pctStr}</span>
+        </div>
+      </td>
+      <td>
+        <div class="action-btns">
+          <button class="btn-icon" onclick="editStudent('${s.id}')">✎ Edit</button>
+          <button class="btn-icon danger" onclick="deleteStudent('${s.id}')">✕</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function openAddStudentModal() {
+  editingStudentId = null;
+  document.getElementById('modalTitle').textContent = 'Add Student';
+  ['studentName','studentId','studentEmail','studentPhone','studentClass'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('classAutocomplete').classList.add('hidden');
+  document.getElementById('studentModalBackdrop').classList.remove('hidden');
+}
+
+function editStudent(id) {
+  editingStudentId = id;
+  const s = DB.students.find(s => s.id === id);
+  if (!s) return;
+  document.getElementById('modalTitle').textContent = 'Edit Student';
+  document.getElementById('studentName').value  = s.name;
+  document.getElementById('studentId').value    = s.id;
+  document.getElementById('studentEmail').value = s.email || '';
+  document.getElementById('studentPhone').value = s.phone || '';
+  document.getElementById('studentClass').value = s.class;
+  document.getElementById('classAutocomplete').classList.add('hidden');
+  document.getElementById('studentModalBackdrop').classList.remove('hidden');
+}
+
+function saveStudent() {
+  const name  = document.getElementById('studentName').value.trim();
+  const sid   = document.getElementById('studentId').value.trim();
+  const cl    = document.getElementById('studentClass').value.trim();
+  const email = document.getElementById('studentEmail').value.trim();
+  const phone = document.getElementById('studentPhone').value.trim();
+  if (!name || !sid || !cl) { showToast('Name, ID and Class are required', 'error'); return; }
+
+  const classes = DB.classes;
+  if (!classes.includes(cl)) { classes.push(cl); DB.classes = classes; populateClassSelects([{id:'filterClass',includeAll:true}]); }
+
+  const students = DB.students;
+  if (!editingStudentId) {
+    if (students.find(s => s.id === sid)) { showToast('Student ID already exists', 'error'); return; }
+    students.push({ id:sid, name, class:cl, email, phone });
+    showToast('Student added successfully');
+  } else {
+    const idx = students.findIndex(s => s.id === editingStudentId);
+    students[idx] = { id:sid, name, class:cl, email, phone };
+    showToast('Student updated');
+  }
+  DB.students = students;
+  closeStudentModal();
+  renderStudentsTable();
+}
+
+function deleteStudent(id) {
+  if (!confirm('Delete this student? Their attendance records will also be removed.')) return;
+  DB.students = DB.students.filter(s => s.id !== id);
+  DB.records  = DB.records.filter(r => r.studentId !== id);
+  showToast('Student deleted');
+  renderStudentsTable();
+}
+
+function openClassesModal() {
+  renderClassList();
+  document.getElementById('classModalBackdrop').classList.remove('hidden');
+}
+
+function renderClassList() {
+  document.getElementById('classList').innerHTML = `
+    <div class="class-tag-list">
+      ${DB.classes.map(c => `
+        <span class="class-chip">${c}
+          <button class="class-chip-del" onclick="deleteClass('${c.replace(/'/g,"\\'")}')">✕</button>
+        </span>`).join('')}
+    </div>`;
+}
+
+function addNewClass() {
+  const val = document.getElementById('newClassName').value.trim();
+  if (!val) return;
+  const classes = DB.classes;
+  if (classes.includes(val)) { showToast('Class already exists', 'error'); return; }
+  classes.push(val);
+  DB.classes = classes;
+  document.getElementById('newClassName').value = '';
+  renderClassList();
+  populateClassSelects([{id:'filterClass',includeAll:true}]);
+  showToast(`Class "${val}" added`);
+}
+
+function deleteClass(name) {
+  const students = DB.students.filter(s => s.class === name);
+  if (students.length > 0 && !confirm(`Delete class "${name}"? It has ${students.length} students.`)) return;
+  DB.classes = DB.classes.filter(c => c !== name);
+  renderClassList();
+  populateClassSelects([{id:'filterClass',includeAll:true}]);
+  showToast('Class deleted');
+}
+
+function exportStudents() {
+  const rows = [['Student ID','Name','Class','Email','Phone','Attendance %']];
+  DB.students.forEach(s => {
+    const pct = getAttendancePct(s.id);
+    rows.push([s.id, s.name, s.class, s.email, s.phone, pct!==null ? pct+'%' : 'N/A']);
+  });
+  downloadCSV(rows, 'students.csv');
+  showToast('Students exported');
+}
+
+function initClassAutocomplete() {
+  const input = document.getElementById('studentClass');
+  const list  = document.getElementById('classAutocomplete');
+  if (!input || !list) return;
+  input.addEventListener('input', () => {
+    const val = input.value.trim().toLowerCase();
+    const matches = val ? DB.classes.filter(c => c.toLowerCase().includes(val)) : DB.classes;
+    if (!matches.length) { list.classList.add('hidden'); return; }
+    list.innerHTML = matches.map(c => `<div class="autocomplete-item" data-val="${c}">${c}</div>`).join('');
+    list.classList.remove('hidden');
+  });
+  input.addEventListener('focus', () => {
+    if (!DB.classes.length) return;
+    list.innerHTML = DB.classes.map(c => `<div class="autocomplete-item" data-val="${c}">${c}</div>`).join('');
+    list.classList.remove('hidden');
+  });
+  list.addEventListener('mousedown', e => {
+    const item = e.target.closest('.autocomplete-item');
+    if (!item) return;
+    input.value = item.dataset.val;
+    list.classList.add('hidden');
+  });
+  document.addEventListener('click', e => {
+    if (!input.contains(e.target) && !list.contains(e.target)) list.classList.add('hidden');
+  });
+}
+</script>
+</body>
+</html>
