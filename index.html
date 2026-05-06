@@ -11,64 +11,7 @@
 </head>
 <body>
 
-<!-- ===== LOADING SCREEN ===== -->
-<div id="loadingScreen">
-  <div class="loader-logo-wrap">
-    <img id="loaderLogoImg" src="" alt="Logo" style="display:none;width:200px;height:200px;object-fit:contain;border-radius:12px;">
-    <div id="loaderLogoDefault" class="loader-logo-default">✦</div>
-    <div class="loader-app-name">AttendEase</div>
-    <div class="loader-dots">
-      <span></span><span></span><span></span>
-    </div>
-  </div>
-</div>
-
-<!-- ===== LOGIN SCREEN ===== -->
-<div id="loginScreen" class="hidden">
-  <!-- BG: user can replace this image via CSS var or upload -->
-  <div class="login-bg"></div>
-  <div class="login-overlay"></div>
-  <div class="login-panel">
-    <div class="login-logo-row">
-      <div class="login-logo-icon" id="loginLogoIcon">
-        <img id="loginLogoImg" src="" alt="" style="display:none;width:44px;height:44px;object-fit:contain;border-radius:8px;">
-        <span id="loginLogoDefault">✦</span>
-      </div>
-      <div>
-        <div class="login-brand">AttendEase</div>
-        <div class="login-tagline">Attendance Management System</div>
-      </div>
-    </div>
-    <h2 class="login-title">Welcome back</h2>
-    <p class="login-sub">Sign in to your account to continue</p>
-    <div class="login-form">
-      <div class="login-field">
-        <label>Username or Email</label>
-        <input type="text" id="loginUsername" placeholder="admin@school.edu" autocomplete="username">
-      </div>
-      <div class="login-field">
-        <label>Password</label>
-        <div class="login-pw-wrap">
-          <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
-          <button class="login-pw-toggle" id="loginPwToggle" tabindex="-1">👁</button>
-        </div>
-      </div>
-      <div class="login-options">
-        <label class="login-remember">
-          <input type="checkbox" id="loginRemember"> Remember me
-        </label>
-        <a href="#" class="login-forgot">Forgot password?</a>
-      </div>
-      <button class="login-btn" id="loginBtn">Sign In</button>
-      <div class="login-error hidden" id="loginError">Incorrect username or password.</div>
-    </div>
-    <div class="login-footer-text">
-      Default credentials: <code>admin</code> / <code>admin123</code>
-    </div>
-  </div>
-</div>
-
-<div class="app-shell" id="appShell" style="display:none">
+<div class="app-shell">
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -109,7 +52,6 @@
           <option value="all">All Classes</option>
         </select>
       </div>
-      <button class="logout-btn" id="logoutBtn">⎋ Sign Out</button>
     </div>
   </aside>
 

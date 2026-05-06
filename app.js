@@ -1,93 +1,3 @@
-// ===== LOADING SCREEN =====
-(function() {
-  const savedLogo = localStorage.getItem('ct_logo');
-  if (savedLogo) {
-    const li = document.getElementById('loaderLogoImg');
-    const ld = document.getElementById('loaderLogoDefault');
-    if (li && ld) { li.src = savedLogo; li.style.display = 'block'; ld.style.display = 'none'; }
-  }
-  setTimeout(() => {
-    const loader = document.getElementById('loadingScreen');
-    loader.classList.add('fade-out');
-    setTimeout(() => {
-      loader.style.display = 'none';
-      if (sessionStorage.getItem('ct_loggedin') === '1') {
-        showApp();
-      } else {
-        document.getElementById('loginScreen').classList.remove('hidden');
-        syncLoginLogo();
-      }
-    }, 520);
-  }, 2200);
-})();
-
-function syncLoginLogo() {
-  const saved = localStorage.getItem('ct_logo');
-  if (!saved) return;
-  const img = document.getElementById('loginLogoImg');
-  const def = document.getElementById('loginLogoDefault');
-  if (img && def) { img.src = saved; img.style.display = 'block'; def.style.display = 'none'; }
-}
-
-function showApp() {
-  document.getElementById('loginScreen').classList.add('hidden');
-  const shell = document.getElementById('appShell');
-  shell.style.display = 'flex';
-  shell.style.opacity = '0';
-  shell.style.transition = 'opacity 0.35s ease';
-  setTimeout(() => { shell.style.opacity = '1'; }, 30);
-}
-
-function getCredentials() {
-  return {
-    username: localStorage.getItem('ct_username') || 'admin',
-    password: localStorage.getItem('ct_password') || 'admin123'
-  };
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  const loginBtn = document.getElementById('loginBtn');
-  if (!loginBtn) return;
-  const loginErr = document.getElementById('loginError');
-  const pwInput = document.getElementById('loginPassword');
-  const pwToggle = document.getElementById('loginPwToggle');
-
-  pwToggle && pwToggle.addEventListener('click', () => {
-    const isText = pwInput.type === 'text';
-    pwInput.type = isText ? 'password' : 'text';
-    pwToggle.textContent = isText ? '👁' : '🙈';
-  });
-
-  [document.getElementById('loginUsername'), pwInput].forEach(el => {
-    el && el.addEventListener('keypress', e => { if (e.key === 'Enter') doLogin(); });
-  });
-
-  loginBtn.addEventListener('click', doLogin);
-
-  function doLogin() {
-    const username = document.getElementById('loginUsername').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const creds = getCredentials();
-    loginBtn.textContent = 'Signing in…';
-    loginBtn.classList.add('loading');
-    loginErr.classList.add('hidden');
-    setTimeout(() => {
-      if (username === creds.username && password === creds.password) {
-        sessionStorage.setItem('ct_loggedin', '1');
-        showApp();
-        setTimeout(() => { if (typeof initAppAfterLogin === 'function') initAppAfterLogin(); }, 400);
-      } else {
-        loginBtn.textContent = 'Sign In';
-        loginBtn.classList.remove('loading');
-        loginErr.classList.remove('hidden');
-        pwInput.value = '';
-        pwInput.focus();
-      }
-    }, 700);
-  }
-});
-
-
 // ===== STATE =====
 const DB = {
   get classes() { return JSON.parse(localStorage.getItem('ct_classes') || '[]'); },
@@ -821,7 +731,7 @@ function applyLogo(src) {
 }
 
 // ===== EVENT LISTENERS =====
-function initAppAfterLogin() {
+document.addEventListener('DOMContentLoaded', () => {
   seedData();
   populateClassSelects();
   initLogo();
@@ -870,24 +780,4 @@ function initAppAfterLogin() {
 
   // Init dashboard
   initDashboard();
-
-  // Logout
-  const logoutBtn = document.getElementById('logoutBtn');
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      sessionStorage.removeItem('ct_loggedin');
-      const shell = document.getElementById('appShell');
-      shell.style.opacity = '0';
-      setTimeout(() => {
-        shell.style.display = 'none';
-        const loginScreen = document.getElementById('loginScreen');
-        loginScreen.classList.remove('hidden');
-        syncLoginLogo();
-        document.getElementById('loginUsername').value = '';
-        document.getElementById('loginPassword').value = '';
-        document.getElementById('loginError').classList.add('hidden');
-        document.getElementById('loginBtn').textContent = 'Sign In';
-      }, 350);
-    });
-  }
-}
+});
